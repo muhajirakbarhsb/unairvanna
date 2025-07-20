@@ -1,0 +1,33 @@
+# pyproject.toml
+[project]
+name = "university-vanna-ai"
+version = "0.1.0"
+description = "Indonesian University Data Warehouse with Vanna AI and Gemini"
+requires-python = ">=3.9"
+dependencies = [
+    "chainlit>=1.0.504",
+    "psycopg2-binary>=2.9.9",
+    "sqlalchemy>=2.0.23",
+    "vanna[postgres,qdrant]>=0.5.5",
+    "google-generativeai>=0.3.2",
+    "qdrant-client>=1.7.0",
+    "pandas>=2.1.4",
+    "faker>=20.1.0",
+    "python-dotenv>=1.0.0",
+    "langgraph>=0.5.3",
+    "langchain>=0.3.26",
+    "langchain-google-genai>=2.0.10",
+    "asyncpg>=0.30.0",
+    "graphviz>=0.21",
+    "pillow>=11.3.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"

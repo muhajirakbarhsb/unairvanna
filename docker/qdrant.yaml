@@ -1,0 +1,26 @@
+# docker/qdrant-config.yaml
+service:
+  # Enable API key authentication
+  api_key: ${QDRANT__SERVICE__API_KEY}
+
+  # HTTP settings
+  http_port: 6333
+  grpc_port: 6334
+
+  # Enable CORS for development
+  enable_cors: true
+
+storage:
+  # Storage configuration
+  storage_path: /qdrant/storage
+
+  # Performance settings
+  optimizers:
+    memmap_threshold: 1000
+    max_segment_size: 2000000
+
+cluster:
+  # Cluster settings (for single instance)
+  enabled: false
+
+log_level: INFO
