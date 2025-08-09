@@ -1,0 +1,46 @@
+services:
+  # Development App with volume mounting for live reload
+  app-dev:
+    build:
+      context: .
+      target: base
+    container_name: university_app_dev
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - POSTGRES_DB=${POSTGRES_DB:-university_dwh}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-university123}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-university123}@postgres:5432/${POSTGRES_DB:-university_dwh}
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-qdrant123}
+      - QDRANT_URL=http://qdrant:6333
+      - VANNA_MODEL=${VANNA_MODEL:-gemini-2.0-flash-exp}
+      - VANNA_COLLECTION_NAME=${VANNA_COLLECTION_NAME:-university_sql_collection}
+      - UNIVERSITY_NAME=${UNIVERSITY_NAME:-Universitas Indonesia Raya}
+      - UNIVERSITY_CODE=${UNIVERSITY_CODE:-UIR}
+      - CURRENT_ACADEMIC_YEAR=${CURRENT_ACADEMIC_YEAR:-2024/2025}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app:ro
+      - ./src:/app/src:ro
+      - vanna_data:/app/vanna_models
+    networks:
+      - university_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    command: ["chainlit", "run", "app/main.py", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+networks:
+  university_network:
+    external: true
+
+volumes:
+  vanna_data:
+    external: true

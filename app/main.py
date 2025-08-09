@@ -409,7 +409,7 @@ async def display_query_classification(result):
 
 
 async def display_data_table(df: pd.DataFrame, question: str):
-    """Display data table with smart formatting"""
+    """Display data table with interactive DataFrame viewer"""
     row_count = len(df)
 
     if row_count == 0:
@@ -419,21 +419,55 @@ async def display_data_table(df: pd.DataFrame, question: str):
         ).send()
         return
 
-    # Smart table display based on size
-    if row_count <= 8:
-        # Small dataset - show all
-        table_text = f"📊 **Complete Data** ({row_count} rows):\n\n```\n"
-        table_text += df.to_string(index=False, max_cols=6)
-        table_text += "\n```"
-    else:
-        # Large dataset - show sample + summary
-        sample_df = df.head(6)
-        table_text = f"📊 **Data Sample** (showing 6 of {row_count} rows):\n\n```\n"
-        table_text += sample_df.to_string(index=False, max_cols=6)
-        table_text += f"\n\n... dan {row_count - 6} baris lainnya\n```"
+    # Create summary message
+    summary_msg = f"📊 **Data Results** ({row_count} rows x {len(df.columns)} columns)\n\n"
+    summary_msg += f"**Columns**: {', '.join(df.columns.tolist())}\n\n"
+    
+    # Add data type info
+    dtypes_info = []
+    for col, dtype in df.dtypes.items():
+        if pd.api.types.is_numeric_dtype(dtype):
+            dtypes_info.append(f"**{col}**: {dtype} (numeric)")
+        else:
+            dtypes_info.append(f"**{col}**: {dtype}")
+    
+    if len(dtypes_info) <= 5:
+        summary_msg += "**Data Types**:\n" + "\n".join(dtypes_info) + "\n\n"
+    
+    # Add basic statistics for numeric columns
+    numeric_cols = df.select_dtypes(include=['number']).columns
+    if len(numeric_cols) > 0:
+        summary_msg += "**Quick Stats** (numeric columns):\n"
+        for col in numeric_cols[:3]:  # Show max 3 columns
+            try:
+                values = df[col].dropna()
+                if len(values) > 0:
+                    summary_msg += f"• **{col}**: min={values.min():.2f}, max={values.max():.2f}, avg={values.mean():.2f}\n"
+            except:
+                pass
+        summary_msg += "\n"
+
+    summary_msg += "*Interactive table ditampilkan di bawah - Anda dapat scroll, sort, dan filter data!*"
+
+    # Send summary message
+    await cl.Message(
+        content=summary_msg,
+        author="Data Display"
+    ).send()
+
+    # Display interactive DataFrame 
+    # Chainlit automatically renders pandas DataFrames as interactive tables
+    elements = [
+        cl.Pandas(
+            name="query_results",
+            display="inline",
+            dataframe=df
+        )
+    ]
 
     await cl.Message(
-        content=table_text,
+        content="📋 **Interactive Data Table**:",
+        elements=elements,
         author="Data Display"
     ).send()
 

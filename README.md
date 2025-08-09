@@ -39,9 +39,7 @@
 ```
 unairvanna/
 ├── 📱 app/
-│   ├── main.py              # Chainlit web application
-│   ├── handlers.py          # Request handlers
-│   └── app.py              # Core application logic
+│   └── main.py              # Chainlit web application
 ├── 🔧 src/
 │   ├── agents/
 │   │   ├── langgraph_system.py  # Multi-agent LangGraph workflow
@@ -49,27 +47,24 @@ unairvanna/
 │   ├── vanna/
 │   │   ├── setup.py         # Vanna + Gemini + Qdrant integration
 │   │   ├── training.py      # Training data and examples
+│   │   ├── feedback.py      # Feedback management system
 │   │   └── __init__.py
 │   ├── database/
-│   │   ├── connection.py    # Database connections
 │   │   ├── populate.py      # Sample data generation
 │   │   └── __init__.py
-│   ├── config.py            # Configuration management
-│   └── utils.py            # Utility functions
+│   └── __init__.py
 ├── 🐳 docker/
 │   ├── postgres-init.sql    # Database schema initialization
 │   ├── postgresql.conf      # PostgreSQL configuration
 │   └── qdrant.yaml         # Qdrant vector DB configuration
 ├── 📊 scripts/
-│   └── generate_graph.py    # LangGraph visualization generator
-├── 🧪 tests/
-│   └── test_basic.py       # Unit tests
-├── 📋 training_data/
-│   └── sample_queries.json  # Training examples
+│   ├── generate_graph.py    # LangGraph visualization generator
+│   └── manage_feedback.py   # Feedback management utilities
 ├── 🔧 Configuration Files
+│   ├── Dockerfile           # Container configuration
 │   ├── docker-compose.yml   # Multi-service orchestration
-│   ├── pyproject.toml      # Python dependencies
-│   ├── .env.example        # Environment variables template
+│   ├── pyproject.toml       # Python dependencies & project config
+│   ├── uv.lock             # Dependency lock file
 │   └── README.md           # This file
 ```
 
@@ -78,75 +73,65 @@ unairvanna/
 ### 1️⃣ **Prerequisites**
 ```bash
 # Required software
-- Python 3.9+
 - Docker & Docker Compose
 - Git
-- UV package manager (optional but recommended)
 ```
 
-### 2️⃣ **Clone Repository**
+### 2️⃣ **Clone & Setup**
 ```bash
 git clone https://github.com/muhajirakbarhsb/unairvanna.git
 cd unairvanna
+
+# Create environment file
+touch .env
 ```
 
-### 3️⃣ **Environment Setup**
+### 3️⃣ **Environment Variables**
+Edit `.env` file:
 ```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit .env file with your configurations
-nano .env
-```
-
-### 4️⃣ **Required API Keys**
-Add to your `.env` file:
-```bash
-# 🔑 REQUIRED: Google Gemini API Key
 GEMINI_API_KEY=your_gemini_api_key_here
-
-# Get your free API key at: https://makersuite.google.com/app/apikey
 ```
 
-### 5️⃣ **Start Infrastructure**
+### 4️⃣ **Docker Commands**
+
+**First time (complete setup):**
 ```bash
-# Start PostgreSQL + Qdrant + PgAdmin
-docker-compose up -d
-
-# Verify services are running
-docker-compose ps
+docker-compose --profile full up -d
 ```
 
-### 6️⃣ **Install Dependencies**
+**Run app only (after training):**
 ```bash
-# Using UV (recommended)
-uv add chainlit psycopg2-binary sqlalchemy vanna google-generativeai qdrant-client pandas faker python-dotenv langgraph langchain langchain-google-genai asyncpg graphviz pillow
-
-# Or using pip
-pip install -r requirements.txt
+docker-compose --profile app up -d
 ```
 
-### 7️⃣ **Initialize Database**
+**Development mode:**
 ```bash
-# Populate with sample university data
-python src/database/populate.py
+docker-compose -f docker-compose.dev.yml up app-dev
 ```
 
-### 8️⃣ **Train Vanna AI**
+**Step by step:**
 ```bash
-# Train the AI with university-specific queries
-cd src/vanna
-python training.py
+# Infrastructure only
+docker-compose up -d postgres qdrant
+
+# Populate database
+docker-compose --profile init up db-init
+
+# Train AI (once)
+docker-compose --profile train up vanna-trainer
+
+# Start app
+docker-compose --profile app up -d
 ```
 
-### 9️⃣ **Launch Application**
+**With database admin:**
 ```bash
-# Start the Chainlit web interface
-chainlit run app/main.py --port 8000
+docker-compose --profile app --profile admin up -d
 ```
 
-### 🎉 **Access Your AI Assistant**
-Open your browser and navigate to: **http://localhost:8000**
+### 🎉 **Access**
+- App: **http://localhost:8000**
+- PgAdmin: **http://localhost:8080**
 
 ## 🔧 **Configuration**
 
@@ -175,7 +160,7 @@ QDRANT_URL=http://localhost:6333
 ### 🤖 **AI Model Settings**
 ```bash
 # Vanna + Gemini Configuration
-VANNA_MODEL=gemini-1.5-pro
+VANNA_MODEL=gemini-2.0-flash-exp
 VANNA_TEMPERATURE=0.1
 VANNA_MAX_TOKENS=2000
 VANNA_COLLECTION_NAME=university_sql_collection
@@ -321,9 +306,6 @@ cl.config.ui.theme = {
 
 ### ✅ **Run Tests**
 ```bash
-# Unit tests
-python -m pytest tests/
-
 # Integration tests
 python src/vanna/setup.py  # Test Vanna connection
 python scripts/generate_graph.py  # Test LangGraph
@@ -414,11 +396,10 @@ docker-compose restart qdrant
 #### Training Data Issues
 ```bash
 # Retrain Vanna
-cd src/vanna
-python training.py
+python src/vanna/training.py
 
 # Check training data
-python -c "from setup import UniversityVannaGemini; vn = UniversityVannaGemini(); print(vn.get_training_data())"
+python -c "from src.vanna.setup import UniversityVannaGemini; vn = UniversityVannaGemini(); print(vn.get_training_data())"
 ```
 
 ## 📚 **Documentation**

@@ -39,10 +39,106 @@ services:
     networks:
       - university_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "sleep 1"]
+      interval: 2s
+      timeout: 1s
+      retries: 3
+      start_period: 30s
+
+  # Database Initialization & Population
+  db-init:
+    build:
+      context: .
+      target: db-populate
+    container_name: university_db_init
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-university_dwh}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-university123}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-university123}@postgres:5432/${POSTGRES_DB:-university_dwh}
+    networks:
+      - university_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - init
+      - full
+
+  # Vanna AI Training (Run Once)
+  vanna-trainer:
+    build:
+      context: .
+      target: vanna-train
+    container_name: university_vanna_trainer
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - POSTGRES_DB=${POSTGRES_DB:-university_dwh}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-university123}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-university123}@postgres:5432/${POSTGRES_DB:-university_dwh}
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-qdrant123}
+      - QDRANT_URL=http://qdrant:6333
+      - VANNA_MODEL=${VANNA_MODEL:-gemini-2.0-flash-exp}
+      - VANNA_COLLECTION_NAME=${VANNA_COLLECTION_NAME:-university_sql_collection}
+    volumes:
+      - vanna_data:/app/vanna_models
+    networks:
+      - university_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    command: ["sh", "-c", "sleep 30 && python src/vanna/training.py"]
+    profiles:
+      - train
+      - full
+
+  # Main Application
+  app:
+    build:
+      context: .
+      target: app
+    container_name: university_app
+    restart: unless-stopped
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - POSTGRES_DB=${POSTGRES_DB:-university_dwh}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-university123}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-university123}@postgres:5432/${POSTGRES_DB:-university_dwh}
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-qdrant123}
+      - QDRANT_URL=http://qdrant:6333
+      - VANNA_MODEL=${VANNA_MODEL:-gemini-2.0-flash-exp}
+      - VANNA_COLLECTION_NAME=${VANNA_COLLECTION_NAME:-university_sql_collection}
+      - UNIVERSITY_NAME=${UNIVERSITY_NAME:-Universitas Indonesia Raya}
+      - UNIVERSITY_CODE=${UNIVERSITY_CODE:-UIR}
+      - CURRENT_ACADEMIC_YEAR=${CURRENT_ACADEMIC_YEAR:-2024/2025}
+    ports:
+      - "8000:8000"
+    volumes:
+      - vanna_data:/app/vanna_models
+    networks:
+      - university_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    profiles:
+      - app
+      - full
 
   # PgAdmin (Optional)
   pgadmin:
@@ -68,6 +164,7 @@ volumes:
   postgres_data:
   qdrant_data:
   pgadmin_data:
+  vanna_data:
 
 networks:
   university_network:
